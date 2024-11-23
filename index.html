@@ -3,8 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Helper Finder - OpenStreetMap Demo</title>
+  <title>Helper Finder - Kathmandu Valley</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
   <style>
     body { margin: 0; padding: 0; }
     #map { height: 90vh; width: 100%; }
@@ -25,6 +26,23 @@
       padding: 8px;
       font-size: 14px;
     }
+    #search-bar ul {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      max-height: 150px;
+      overflow-y: auto;
+      background: #fff;
+      border: 1px solid #ddd;
+      border-top: none;
+    }
+    #search-bar ul li {
+      padding: 8px;
+      cursor: pointer;
+    }
+    #search-bar ul li:hover {
+      background: #f0f0f0;
+    }
     #search-bar button {
       padding: 8px 10px;
       font-size: 14px;
@@ -34,45 +52,72 @@
 </head>
 <body>
   <div id="info">
-    <h2>Helper Finder Demo</h2>
-    <p>Click on markers to view helper information.</p>
+    <h2>Helper Finder - Kathmandu Valley</h2>
+    <p>Search for places within Kathmandu, Lalitpur, and Bhaktapur.</p>
   </div>
   <div id="search-bar">
     <input type="text" id="place-name" placeholder="Enter a place or landmark">
-    <button id="search-btn">Search & Add Marker</button>
+    <button id="search-btn">Search</button>
+    <ul id="suggestions"></ul>
   </div>
   <div id="map"></div>
 
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
 
   <script>
-    // Initialize the map
-    const map = L.map('map').setView([27.7172, 85.3240], 12); // Centered on Kathmandu
+    // Initialize the map and set view
+    const map = L.map('map', {
+      maxBounds: [
+        [27.6000, 85.2000], // Southwest corner of Kathmandu Valley
+        [27.8000, 85.5500]  // Northeast corner of Kathmandu Valley
+      ],
+      maxBoundsViscosity: 1.0 // Restrict movement outside bounds
+    }).setView([27.7172, 85.3240], 12);
 
     // Set up OpenStreetMap tile layer
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
     }).addTo(map);
 
-    // Mock helper data
-    const helpers = [
-      { id: 1, name: "Helper 1", lat: 27.7182, lng: 85.3250 },
-      { id: 2, name: "Helper 2", lat: 27.7200, lng: 85.3220 },
-      { id: 3, name: "Helper 3", lat: 27.7140, lng: 85.3270 },
-    ];
-
-    // Add markers for each helper
-    helpers.forEach((helper) => {
-      const marker = L.marker([helper.lat, helper.lng]).addTo(map);
-      marker.bindPopup(`<h4>${helper.name}</h4><p>ID: ${helper.id}</p>`);
-    });
-
-    // Geocoding for search
+    // Geocoder instance
     const geocoder = L.Control.Geocoder.nominatim();
 
-    // Add search functionality
+    // Search button functionality
+    const suggestionsList = document.getElementById('suggestions');
+    document.getElementById('place-name').addEventListener('input', (event) => {
+      const query = event.target.value;
+
+      // Clear previous suggestions
+      suggestionsList.innerHTML = '';
+
+      if (query.length > 2) {
+        fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}&addressdetails=1&countrycodes=np&limit=5`)
+          .then(response => response.json())
+          .then(results => {
+            results.forEach((result) => {
+              if (result.display_name.includes('Kathmandu') || result.display_name.includes('Lalitpur') || result.display_name.includes('Bhaktapur')) {
+                const listItem = document.createElement('li');
+                listItem.textContent = result.display_name;
+                listItem.addEventListener('click', () => {
+                  // Zoom to location on click
+                  const lat = parseFloat(result.lat);
+                  const lon = parseFloat(result.lon);
+                  const marker = L.marker([lat, lon]).addTo(map);
+                  marker.bindPopup(`<h4>${result.display_name}</h4><p>Coordinates: ${lat.toFixed(5)}, ${lon.toFixed(5)}</p>`).openPopup();
+                  map.setView([lat, lon], 14);
+
+                  // Clear suggestions
+                  suggestionsList.innerHTML = '';
+                  document.getElementById('place-name').value = result.display_name;
+                });
+                suggestionsList.appendChild(listItem);
+              }
+            });
+          });
+      }
+    });
+
     document.getElementById('search-btn').addEventListener('click', () => {
       const placeName = document.getElementById('place-name').value;
       if (!placeName) {
