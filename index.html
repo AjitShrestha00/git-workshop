@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Helper Finder - Search Nearby Services</title>
+  <title>Dynamic Service Providers by Area</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
   <style>
     body { margin: 0; padding: 0; font-family: Arial, sans-serif; }
@@ -49,11 +49,11 @@
 </head>
 <body>
   <div id="info">
-    <h2>Helper Finder - Search Nearby Services</h2>
-    <p>Search for an area to find available service givers.</p>
+    <h2>Find Service Providers by Area</h2>
+    <p>Search for an area to find available service providers dynamically.</p>
   </div>
   <div id="search-bar">
-    <input type="text" id="search-input" placeholder="Enter an area (e.g., Kathmandu)" />
+    <input type="text" id="search-input" placeholder="Enter an area (e.g., Samakhusi, Lalitpur)" />
     <button onclick="searchArea()">Search</button>
   </div>
   <div id="map"></div>
@@ -64,63 +64,62 @@
 
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <script>
-    // Define map bounds for Kathmandu Valley (southwest and northeast corners)
-    const mapBounds = [
-      [27.5843, 85.2503], // Southwest corner
-      [27.7867, 85.4457]  // Northeast corner
-    ];
-
-    // Initialize the map with bounds
-    const map = L.map('map', {
-      maxBounds: mapBounds,
-      maxBoundsViscosity: 1.0 // Prevents panning outside the bounds
-    }).setView([27.7172, 85.3240], 12); // Default center: Kathmandu
+    // Initialize the map
+    const map = L.map('map').setView([27.7172, 85.3240], 12); // Default: Kathmandu
 
     // OpenStreetMap tile layer
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
     }).addTo(map);
 
-    // Demo helper data
-    const helpers = [
-      { id: 1, name: "Helper 1", lat: 27.7182, lng: 85.3250, status: "Available", profession: "Electrician" },
-      { id: 2, name: "Helper 2", lat: 27.7200, lng: 85.3220, status: "Available", profession: "Plumber" },
-      { id: 3, name: "Helper 3", lat: 27.7140, lng: 85.3270, status: "Available", profession: "Carpenter" },
-    ];
+    // Mock data: Service providers mapped to areas
+    const areaProviders = {
+      Samakhusi: [
+        { id: 1, name: "Helper A", lat: 27.7281, lng: 85.3220, profession: "Electrician", status: "Available" },
+        { id: 2, name: "Helper B", lat: 27.7265, lng: 85.3245, profession: "Plumber", status: "Available" },
+      ],
+      Lalitpur: [
+        { id: 3, name: "Helper C", lat: 27.6678, lng: 85.3252, profession: "Carpenter", status: "Available" },
+        { id: 4, name: "Helper D", lat: 27.6665, lng: 85.3281, profession: "Mechanic", status: "Available" },
+      ],
+      Kathmandu: [
+        { id: 5, name: "Helper E", lat: 27.7172, lng: 85.3240, profession: "Electrician", status: "Available" },
+      ]
+    };
 
-    // Add markers for all helpers
+    // Add markers for service providers
     let markers = [];
-    function addMarkers(filteredHelpers) {
+    function addMarkers(providers) {
       markers.forEach(marker => marker.remove()); // Clear existing markers
       markers = [];
-      filteredHelpers.forEach(helper => {
-        const marker = L.marker([helper.lat, helper.lng]).addTo(map);
+      providers.forEach(provider => {
+        const marker = L.marker([provider.lat, provider.lng]).addTo(map);
         marker.bindPopup(`
-          <h4>${helper.name}</h4>
-          <p>Profession: ${helper.profession}</p>
-          <p>Status: <strong>${helper.status}</strong></p>
+          <h4>${provider.name}</h4>
+          <p>Profession: ${provider.profession}</p>
+          <p>Status: <strong>${provider.status}</strong></p>
         `);
         markers.push(marker);
       });
     }
 
-    // Show helper cards in the list
-    function updateHelperList(filteredHelpers) {
+    // Update helper cards list
+    function updateHelperList(providers) {
       const helperCardsContainer = document.getElementById('helper-cards');
       helperCardsContainer.innerHTML = ''; // Clear existing cards
-      filteredHelpers.forEach(helper => {
+      providers.forEach(provider => {
         const card = document.createElement('div');
         card.className = 'helper-card';
         card.innerHTML = `
-          <h4>${helper.name}</h4>
-          <p>Profession: ${helper.profession}</p>
-          <p>Status: <strong>${helper.status}</strong></p>
+          <h4>${provider.name}</h4>
+          <p>Profession: ${provider.profession}</p>
+          <p>Status: <strong>${provider.status}</strong></p>
         `;
         helperCardsContainer.appendChild(card);
       });
     }
 
-    // Search for an area using OpenStreetMap Nominatim API
+    // Search for area and display related providers
     async function searchArea() {
       const searchQuery = document.getElementById('search-input').value;
       if (!searchQuery) {
@@ -128,8 +127,8 @@
         return;
       }
 
-      // Fetch location data from Nominatim API
-      const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(searchQuery)}&format=json&bounded=1&viewbox=${mapBounds[0][1]},${mapBounds[1][0]},${mapBounds[1][1]},${mapBounds[0][0]}`;
+      // Fetch location data from OpenStreetMap Nominatim API
+      const url = https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(searchQuery)}&format=json&limit=1;
       const response = await fetch(url);
       const data = await response.json();
 
@@ -144,17 +143,15 @@
       const lon = parseFloat(location.lon);
       map.setView([lat, lon], 14);
 
-      // Filter helpers within a certain range (e.g., 2km)
-      const filteredHelpers = helpers.filter(helper => {
-        const distance = Math.sqrt(
-          Math.pow(helper.lat - lat, 2) + Math.pow(helper.lng - lon, 2)
-        );
-        return distance < 0.02; // Adjust the threshold as needed
-      });
+      // Get providers for the searched area
+      const providers = areaProviders[searchQuery] || [];
+      if (providers.length === 0) {
+        alert(No service providers found for "${searchQuery}".);
+      }
 
       // Update map markers and helper list
-      addMarkers(filteredHelpers);
-      updateHelperList(filteredHelpers);
+      addMarkers(providers);
+      updateHelperList(providers);
     }
   </script>
 </body>
