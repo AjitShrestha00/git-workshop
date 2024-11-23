@@ -3,165 +3,150 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Helper Finder with Request Feature</title>
+  <title>Helper Finder - Search Nearby Services</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
   <style>
-    body { margin: 0; padding: 0; }
-    #map { height: 90vh; width: 100%; }
+    body { margin: 0; padding: 0; font-family: Arial, sans-serif; }
+    #map { height: 70vh; width: 100%; }
+    #info { padding: 10px; text-align: center; background: #f8f9fa; }
     #search-bar {
-      position: absolute;
-      top: 10px;
-      left: 50%;
-      transform: translateX(-50%);
-      z-index: 1000;
-      background: white;
-      padding: 10px;
-      border-radius: 5px;
-      box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+      max-width: 800px;
+      margin: 10px auto;
+      display: flex;
+      gap: 10px;
+      padding: 0 10px;
     }
     #search-bar input {
-      width: 300px;
-      padding: 8px;
-      font-size: 14px;
+      flex: 1;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
     }
-    #search-bar ul {
-      list-style: none;
-      padding: 0;
-      margin: 5px 0 0;
-      max-height: 150px;
-      overflow-y: auto;
-      border: 1px solid #ccc;
-      background: white;
-      position: absolute;
-      width: 300px;
-      z-index: 1001;
-    }
-    #search-bar li {
-      padding: 8px;
+    #search-bar button {
+      padding: 10px;
+      border: none;
+      background: #007bff;
+      color: white;
+      border-radius: 5px;
       cursor: pointer;
     }
-    #search-bar li:hover {
-      background-color: #f0f0f0;
+    #helper-list {
+      padding: 10px;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    .helper-card {
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      padding: 10px;
+      margin-bottom: 10px;
+      background: #f9f9f9;
+    }
+    .helper-card h4 {
+      margin: 0;
     }
   </style>
 </head>
 <body>
+  <div id="info">
+    <h2>Helper Finder - Search Nearby Services</h2>
+    <p>Search for an area to find available service givers.</p>
+  </div>
   <div id="search-bar">
-    <input type="text" id="place-name" placeholder="Enter a place or landmark">
-    <ul id="suggestions"></ul>
+    <input type="text" id="search-input" placeholder="Enter an area (e.g., Kathmandu)" />
+    <button onclick="searchArea()">Search</button>
   </div>
   <div id="map"></div>
+  <div id="helper-list">
+    <h3>Available Helpers</h3>
+    <div id="helper-cards"></div>
+  </div>
 
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <script>
-    // Initialize the map and limit bounds to Kathmandu, Lalitpur, and Bhaktapur
-    const mapBounds = [
-      [27.5843, 85.2503], // Southwest corner (Lat, Lng)
-      [27.7867, 85.4457]  // Northeast corner (Lat, Lng)
-    ];
+    // Initialize the map
+    const map = L.map('map').setView([27.7172, 85.3240], 12); // Default: Kathmandu
 
-    const map = L.map('map', {
-      maxBounds: mapBounds,
-      maxBoundsViscosity: 1.0
-    }).setView([27.7172, 85.3240], 12); // Centered on Kathmandu
-
-    // Set up OpenStreetMap tile layer
+    // OpenStreetMap tile layer
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
     }).addTo(map);
 
-    // Mock helper data with status
+    // Demo helper data
     const helpers = [
-      { id: 1, name: "Helper 1", lat: 27.7182, lng: 85.3250, status: "Available" },
-      { id: 2, name: "Helper 2", lat: 27.7200, lng: 85.3220, status: "Available" },
-      { id: 3, name: "Helper 3", lat: 27.7140, lng: 85.3270, status: "Available" },
+      { id: 1, name: "Helper 1", lat: 27.7182, lng: 85.3250, status: "Available", profession: "Electrician" },
+      { id: 2, name: "Helper 2", lat: 27.7200, lng: 85.3220, status: "Available", profession: "Plumber" },
+      { id: 3, name: "Helper 3", lat: 27.7140, lng: 85.3270, status: "Available", profession: "Carpenter" },
     ];
 
-    // Array to hold markers
-    let markers = [];
-
-    // Function to dynamically update popup content
-    function getPopupContent(helper) {
-      return `
-        <h4>${helper.name}</h4>
-        <p>ID: ${helper.id}</p>
-        <p>Status: <strong>${helper.status}</strong></p>
-        <button onclick="requestService(${helper.id})">Request Service</button>
-      `;
-    }
-
-    // Function to request a service
-    function requestService(helperId) {
-      const helper = helpers.find(h => h.id === helperId);
-      if (helper) {
-        if (helper.status === "Available") {
-          helper.status = "Requested";
-          alert(`You have requested service from ${helper.name}.`);
-        } else {
-          alert(`${helper.name} is already requested.`);
-        }
-        refreshMarkers();
-      }
-    }
-
-    // Function to refresh markers on the map
-    function refreshMarkers() {
-      markers.forEach(marker => marker.remove()); // Remove all markers
-      markers = [];
-      helpers.forEach(addMarker); // Re-add all markers
-    }
-
-    // Function to add a marker for a helper
-    function addMarker(helper) {
-      const marker = L.marker([helper.lat, helper.lng]).addTo(map);
-      marker.bindPopup(getPopupContent(helper));
-      markers.push(marker);
-    }
-
     // Add markers for all helpers
-    helpers.forEach(addMarker);
+    let markers = [];
+    function addMarkers(filteredHelpers) {
+      markers.forEach(marker => marker.remove()); // Clear existing markers
+      markers = [];
+      filteredHelpers.forEach(helper => {
+        const marker = L.marker([helper.lat, helper.lng]).addTo(map);
+        marker.bindPopup(`
+          <h4>${helper.name}</h4>
+          <p>Profession: ${helper.profession}</p>
+          <p>Status: <strong>${helper.status}</strong></p>
+        `);
+        markers.push(marker);
+      });
+    }
 
-    // Geocoding with OpenStreetMap Nominatim API
-    const geocode = async (query) => {
-      const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${query}&bounded=1&viewbox=${mapBounds[0][1]},${mapBounds[1][0]},${mapBounds[1][1]},${mapBounds[0][0]}`
-      );
-      return response.json();
-    };
+    // Show helper cards in the list
+    function updateHelperList(filteredHelpers) {
+      const helperCardsContainer = document.getElementById('helper-cards');
+      helperCardsContainer.innerHTML = ''; // Clear existing cards
+      filteredHelpers.forEach(helper => {
+        const card = document.createElement('div');
+        card.className = 'helper-card';
+        card.innerHTML = `
+          <h4>${helper.name}</h4>
+          <p>Profession: ${helper.profession}</p>
+          <p>Status: <strong>${helper.status}</strong></p>
+        `;
+        helperCardsContainer.appendChild(card);
+      });
+    }
 
-    // Handle input and show suggestions
-    const input = document.getElementById('place-name');
-    const suggestions = document.getElementById('suggestions');
-
-    input.addEventListener('input', async () => {
-      const query = input.value.trim();
-      if (!query) {
-        suggestions.innerHTML = '';
+    // Search for an area using OpenStreetMap Nominatim API
+    async function searchArea() {
+      const searchQuery = document.getElementById('search-input').value;
+      if (!searchQuery) {
+        alert('Please enter an area to search.');
         return;
       }
 
-      const results = await geocode(query);
-      suggestions.innerHTML = results.map(result => `
-        <li data-lat="${result.lat}" data-lon="${result.lon}">
-          ${result.display_name}
-        </li>`).join('');
-    });
+      // Fetch location data from Nominatim API
+      const url = https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(searchQuery)}&format=json&limit=1;
+      const response = await fetch(url);
+      const data = await response.json();
 
-    // Add marker on suggestion click
-    suggestions.addEventListener('click', (e) => {
-      if (e.target.tagName === 'LI') {
-        const lat = e.target.getAttribute('data-lat');
-        const lon = e.target.getAttribute('data-lon');
-        const name = e.target.textContent;
-
-        const marker = L.marker([lat, lon]).addTo(map);
-        marker.bindPopup(`<h4>${name}</h4><p>Coordinates: ${lat}, ${lon}</p>`).openPopup();
-        map.setView([lat, lon], 14);
-
-        suggestions.innerHTML = '';
-        input.value = name;
+      if (data.length === 0) {
+        alert('No location found. Please try again.');
+        return;
       }
-    });
+
+      // Center the map on the searched location
+      const location = data[0];
+      const lat = parseFloat(location.lat);
+      const lon = parseFloat(location.lon);
+      map.setView([lat, lon], 14);
+
+      // Filter helpers within a certain range (e.g., 2km)
+      const filteredHelpers = helpers.filter(helper => {
+        const distance = Math.sqrt(
+          Math.pow(helper.lat - lat, 2) + Math.pow(helper.lng - lon, 2)
+        );
+        return distance < 0.02; // Adjust the threshold as needed
+      });
+
+      // Update map markers and helper list
+      addMarkers(filteredHelpers);
+      updateHelperList(filteredHelpers);
+    }
   </script>
 </body>
 </html>
