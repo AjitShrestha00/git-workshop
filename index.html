@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Helper Finder - Search Nearby Services</title>
+  <title>Helper Finder - Complete Application</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
   <style>
     body { margin: 0; padding: 0; font-family: Arial, sans-serif; }
@@ -49,8 +49,8 @@
 </head>
 <body>
   <div id="info">
-    <h2>Helper Finder - Search Nearby Services</h2>
-    <p>Search for an area to find available service givers.</p>
+    <h2>Helper Finder - Complete Application</h2>
+    <p>Search for an area or helper, view available services, and request assistance.</p>
   </div>
   <div id="search-bar">
     <input type="text" id="search-input" placeholder="Enter an area (e.g., Kathmandu)" />
@@ -64,8 +64,17 @@
 
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <script>
+    // Map bounds: Kathmandu, Lalitpur, and Bhaktapur
+    const mapBounds = [
+      [27.5843, 85.2503], // Southwest corner
+      [27.7867, 85.4457]  // Northeast corner
+    ];
+
     // Initialize the map
-    const map = L.map('map').setView([27.7172, 85.3240], 12); // Default: Kathmandu
+    const map = L.map('map', {
+      maxBounds: mapBounds,
+      maxBoundsViscosity: 1.0
+    }).setView([27.7172, 85.3240], 12);
 
     // OpenStreetMap tile layer
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -79,7 +88,7 @@
       { id: 3, name: "Helper 3", lat: 27.7140, lng: 85.3270, status: "Available", profession: "Carpenter" },
     ];
 
-    // Add markers for all helpers
+    // Array to hold markers
     let markers = [];
     function addMarkers(filteredHelpers) {
       markers.forEach(marker => marker.remove()); // Clear existing markers
@@ -90,6 +99,7 @@
           <h4>${helper.name}</h4>
           <p>Profession: ${helper.profession}</p>
           <p>Status: <strong>${helper.status}</strong></p>
+          <button onclick="requestService(${helper.id})">Request Service</button>
         `);
         markers.push(marker);
       });
@@ -106,9 +116,25 @@
           <h4>${helper.name}</h4>
           <p>Profession: ${helper.profession}</p>
           <p>Status: <strong>${helper.status}</strong></p>
+          <button onclick="requestService(${helper.id})">Request Service</button>
         `;
         helperCardsContainer.appendChild(card);
       });
+    }
+
+    // Function to request a service
+    function requestService(helperId) {
+      const helper = helpers.find(h => h.id === helperId);
+      if (helper) {
+        if (helper.status === "Available") {
+          helper.status = "Requested";
+          alert(`You have requested service from ${helper.name}.`);
+        } else {
+          alert(`${helper.name} is already requested.`);
+        }
+        addMarkers(helpers); // Refresh markers
+        updateHelperList(helpers); // Refresh helper list
+      }
     }
 
     // Search for an area using OpenStreetMap Nominatim API
@@ -120,7 +146,7 @@
       }
 
       // Fetch location data from Nominatim API
-      const url = https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(searchQuery)}&format=json&limit=1;
+      const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(searchQuery)}&format=json&bounded=1&viewbox=${mapBounds[0][1]},${mapBounds[1][0]},${mapBounds[1][1]},${mapBounds[0][0]}`;
       const response = await fetch(url);
       const data = await response.json();
 
