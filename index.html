@@ -64,21 +64,10 @@
 
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <script>
-    // Define the bounding box for Kathmandu Valley
-    const kathmanduValleyBounds = [
-      [27.55, 85.21], // Southwest corner
-      [27.85, 85.55], // Northeast corner
-    ];
-
     // Initialize the map
-    const map = L.map('map', {
-      maxBounds: kathmanduValleyBounds, // Restrict the map to Kathmandu Valley
-      maxBoundsViscosity: 1.0, // Prevent panning outside bounds
-      minZoom: 10,
-      maxZoom: 16,
-    }).setView([27.7172, 85.3240], 12); // Default: Kathmandu
+    const map = L.map('map').setView([27.7172, 85.3240], 12); // Default: Kathmandu
 
-    // Add OpenStreetMap tile layer
+    // OpenStreetMap tile layer
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
     }).addTo(map);
@@ -95,7 +84,7 @@
       ],
       Kathmandu: [
         { id: 5, name: "Helper E", lat: 27.7172, lng: 85.3240, profession: "Electrician", status: "Available" },
-      ],
+      ]
     };
 
     // Add markers for service providers
@@ -132,18 +121,32 @@
 
     // Search for area and display related providers
     async function searchArea() {
-      const searchQuery = document.getElementById('search-input').value.trim();
+      const searchQuery = document.getElementById('search-input').value;
       if (!searchQuery) {
         alert('Please enter an area to search.');
         return;
       }
 
+      // Fetch location data from OpenStreetMap Nominatim API
+      const url = https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(searchQuery)}&format=json&limit=1;
+      const response = await fetch(url);
+      const data = await response.json();
+
+      if (data.length === 0) {
+        alert('No location found. Please try again.');
+        return;
+      }
+
+      // Center the map on the searched location
+      const location = data[0];
+      const lat = parseFloat(location.lat);
+      const lon = parseFloat(location.lon);
+      map.setView([lat, lon], 14);
+
       // Get providers for the searched area
       const providers = areaProviders[searchQuery] || [];
       if (providers.length === 0) {
-        alert(`No service providers found for "${searchQuery}".`);
-      } else {
-        map.setView([providers[0].lat, providers[0].lng], 14);
+        alert(No service providers found for "${searchQuery}".);
       }
 
       // Update map markers and helper list
