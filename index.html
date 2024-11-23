@@ -64,8 +64,17 @@
 
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <script>
-    // Initialize the map
-    const map = L.map('map').setView([27.7172, 85.3240], 12); // Default: Kathmandu
+    // Define map bounds for Kathmandu Valley (southwest and northeast corners)
+    const mapBounds = [
+      [27.5843, 85.2503], // Southwest corner
+      [27.7867, 85.4457]  // Northeast corner
+    ];
+
+    // Initialize the map with bounds
+    const map = L.map('map', {
+      maxBounds: mapBounds,
+      maxBoundsViscosity: 1.0 // Prevents panning outside the bounds
+    }).setView([27.7172, 85.3240], 12); // Default center: Kathmandu
 
     // OpenStreetMap tile layer
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -120,7 +129,7 @@
       }
 
       // Fetch location data from Nominatim API
-      const url = https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(searchQuery)}&format=json&limit=1;
+      const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(searchQuery)}&format=json&bounded=1&viewbox=${mapBounds[0][1]},${mapBounds[1][0]},${mapBounds[1][1]},${mapBounds[0][0]}`;
       const response = await fetch(url);
       const data = await response.json();
 
