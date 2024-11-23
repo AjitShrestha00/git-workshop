@@ -38,8 +38,9 @@
     // Add markers for each helper
     helpers.forEach((helper) => {
       const marker = L.marker([helper.lat, helper.lng]).addTo(map);
-      marker.bindPopup(<h4>${helper.name}</h4><p>ID: ${helper.id}</p>);
+      // Corrected bindPopup with template literals and proper usage
+      marker.bindPopup(`<h4>${helper.name}</h4><p>ID: ${helper.id}</p>`);
     });
   </script>
 </body>
-</html
+</html>
